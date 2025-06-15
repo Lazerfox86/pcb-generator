@@ -1,118 +1,111 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" id="htmlRoot">
 <head>
-  <meta charset="UTF-8"/>
+  <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>PCB Generator</title>
-  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.15/dist/tailwind.min.css" rel="stylesheet"/>
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.15/dist/tailwind.min.css" rel="stylesheet" />
 </head>
-<body class="bg-gray-100 font-sans">
+<body class="bg-gray-100 text-gray-900 dark:bg-gray-900 dark:text-white">
 
-  <!-- PCB Generator Panel -->
+  <!-- Generator UI -->
   <div class="min-h-screen flex items-center justify-center px-4">
-    <div class="bg-white p-8 rounded shadow-lg w-full max-w-md">
+    <div class="bg-white dark:bg-gray-800 p-8 rounded shadow-lg w-full max-w-md">
 
-      <h1 class="text-2xl font-bold text-blue-700 text-center mb-4">PCB Generator</h1>
+      <h1 class="text-2xl font-bold text-center text-blue-600 dark:text-blue-400 mb-4">PCB Generator</h1>
 
       <label class="block mb-2 font-medium">Project Name</label>
-      <input id="projectName" type="text" placeholder="e.g., SmartWatch" class="w-full border p-2 rounded mb-4"/>
+      <input id="projectName" type="text" placeholder="e.g., SmartTag" class="w-full border p-2 rounded mb-4"/>
 
       <label class="block mb-2 font-medium">Specification</label>
-      <textarea id="spec" placeholder="e.g., STM32 + USB-C + OLED..." class="w-full border p-2 rounded mb-4"></textarea>
+      <textarea id="spec" placeholder="Describe your PCB..." class="w-full border p-2 rounded mb-4"></textarea>
 
       <div class="flex gap-2 mb-4">
-        <button onclick="generatePCB()" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded">Generate PCB</button>
+        <button onclick="generatePCB()" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded">Generate</button>
         <button onclick="generateSpec()" class="flex-1 bg-gray-700 hover:bg-gray-800 text-white font-semibold py-2 px-4 rounded">✨ AI Spec</button>
       </div>
 
-      <p id="status" class="text-center text-sm text-gray-600 mt-2"></p>
+      <button onclick="toggleDark()" class="w-full text-sm text-center text-blue-500 hover:underline mb-2">Toggle Dark Mode</button>
+
+      <p id="status" class="text-center text-sm mt-2"></p>
     </div>
   </div>
 
-  <!-- 3D Gerber Viewer -->
-  <div class="max-w-4xl mx-auto mt-10 px-4">
-    <h2 class="text-xl font-semibold mb-2">3D PCB Viewer</h2>
-    <p class="text-sm text-gray-600 mb-2">Upload a Gerber .zip file and drag it into the viewer below:</p>
-    <input type="file" accept=".zip" class="mb-4" />
-    <iframe src="https://gerber-viewer.seeedstudio.com/" class="w-full h-[600px] border rounded" title="3D PCB Viewer"></iframe>
+  <!-- 3D Viewer + Upload -->
+  <div class="max-w-4xl mx-auto mt-12 px-4">
+    <h2 class="text-xl font-semibold mb-2">3D Gerber Viewer</h2>
+    <input type="file" accept=".zip" class="mb-2" />
+    <iframe src="https://gerber-viewer.seeedstudio.com/" class="w-full h-[600px] border rounded" title="3D Viewer"></iframe>
   </div>
 
-  <!-- AI Assistant Chat -->
-  <div id="chat" class="fixed bottom-4 right-4 w-80 bg-white border rounded shadow-lg hidden flex-col">
+  <!-- AI Chat -->
+  <div id="chat" class="fixed bottom-4 right-4 w-80 bg-white dark:bg-gray-800 border rounded shadow-lg hidden flex-col">
     <div class="bg-blue-600 text-white px-4 py-2 font-bold">AI Helper</div>
-    <div id="chatLog" class="p-3 h-48 overflow-y-auto text-sm text-gray-700"></div>
+    <div id="chatLog" class="p-3 h-48 overflow-y-auto text-sm"></div>
     <div class="flex">
-      <input id="chatInput" class="flex-1 border-t px-3 py-2 text-sm" placeholder="Ask me anything..."/>
+      <input id="chatInput" class="flex-1 border-t px-3 py-2 text-sm" placeholder="Ask something..."/>
       <button onclick="sendMessage()" class="bg-blue-600 text-white px-4">➤</button>
     </div>
   </div>
-  <button onclick="document.getElementById('chat').classList.toggle('hidden')" class="fixed bottom-4 right-4 bg-blue-600 text-white px-4 py-2 rounded-full shadow-lg">
-    💬
-  </button>
+  <button onclick="document.getElementById('chat').classList.toggle('hidden')" class="fixed bottom-4 right-4 bg-blue-600 text-white px-4 py-2 rounded-full shadow-lg">💬</button>
 
-  <!-- Scripts -->
   <script>
+    const backend = "http://localhost:8080";
+
     function generatePCB() {
       const projectName = document.getElementById("projectName").value;
       const spec = document.getElementById("spec").value;
       const statusEl = document.getElementById("status");
       statusEl.innerText = "Generating PCB…";
-
-      fetch("https://your-render-url.onrender.com/api/build", {
+      fetch(`${backend}/api/build`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ projectName, spec })
-      })
-      .then(res => res.json())
-      .then(data => {
-        if (data.downloadUrl) {
-          statusEl.innerHTML = `<a href="${data.downloadUrl}" target="_blank" class="text-blue-600 underline">Download your files</a>`;
-        } else {
-          statusEl.innerText = "Something went wrong: " + (data.message || "unknown error");
-        }
-      })
-      .catch(err => {
-        statusEl.innerText = "Error: " + err.message;
+      }).then(r => r.json()).then(d => {
+        statusEl.innerHTML = d.downloadUrl
+          ? `<a href="${d.downloadUrl}" target="_blank" class="underline text-blue-600">Download Files</a>`
+          : "Error: " + (d.message || "Unknown issue");
       });
     }
 
     function generateSpec() {
-      const prompt = window.prompt("Describe your project:");
-      if (!prompt) return;
-
-      fetch("https://your-render-url.onrender.com/api/spec-gen", {
+      const description = prompt("Describe your project:");
+      if (!description) return;
+      fetch(`${backend}/api/spec-gen`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ description: prompt })
-      })
-      .then(res => res.json())
-      .then(data => {
-        document.getElementById("spec").value = data.spec || "";
-        document.getElementById("projectName").value = data.projectName || "";
-      })
-      .catch(() => alert("AI spec generation failed."));
+        body: JSON.stringify({ description })
+      }).then(r => r.json()).then(d => {
+        document.getElementById("projectName").value = d.projectName || "";
+        document.getElementById("spec").value = d.spec || "";
+      });
     }
+
+    function toggleDark() {
+      const html = document.getElementById("htmlRoot");
+      html.classList.toggle("dark");
+      localStorage.setItem("theme", html.classList.contains("dark") ? "dark" : "light");
+    }
+
+    window.onload = () => {
+      if (localStorage.getItem("theme") === "dark") {
+        document.getElementById("htmlRoot").classList.add("dark");
+      }
+    };
 
     function sendMessage() {
       const msg = document.getElementById("chatInput").value;
       if (!msg) return;
-
       const log = document.getElementById("chatLog");
       log.innerHTML += `<div><strong>You:</strong> ${msg}</div>`;
-
-      fetch("https://your-render-url.onrender.com/api/chat", {
+      fetch(`${backend}/api/chat`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ message: msg })
-      })
-      .then(res => res.json())
-      .then(data => {
-        log.innerHTML += `<div><strong>AI:</strong> ${data.reply}</div>`;
+      }).then(r => r.json()).then(d => {
+        log.innerHTML += `<div><strong>AI:</strong> ${d.reply}</div>`;
         document.getElementById("chatInput").value = "";
         log.scrollTop = log.scrollHeight;
-      })
-      .catch(() => {
-        log.innerHTML += `<div><strong>AI:</strong> (error)</div>`;
       });
     }
   </script>
