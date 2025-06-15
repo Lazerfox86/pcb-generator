@@ -1,0 +1,8 @@
+schematic: projects/MyPCB/MyPCB.kicad_sch
+pcb: projects/MyPCB/MyPCB.kicad_pcb
+
+outputs:
+  - type: gerber
+    dir: output/gerbers
+  - type: bom
+    dir: output/bom
