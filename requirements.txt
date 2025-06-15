@@ -1,4 +1,5 @@
-flask 
-requests 
-kibot 
+flask
 flask-cors
+openai
+requests
+kibot
