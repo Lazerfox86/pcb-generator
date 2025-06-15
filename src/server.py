@@ -1,7 +1,8 @@
 import os
-import re
 import json
 import requests
+import subprocess
+import zipfile
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 from werkzeug.utils import secure_filename
@@ -14,6 +15,7 @@ os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
 
 CHAT_FILE = "chat_history.json"
+BUILD_DIR = "builds"
 
 def load_chat():
     if os.path.exists(CHAT_FILE):
@@ -26,14 +28,6 @@ def save_chat(history):
         json.dump(history[-20:], f)
 
 chat_history = load_chat()
-
-def parse_spec_response(text):
-    name = re.search(r"Project Name:\s*(.+)", text)
-    spec = re.search(r"Spec:\s*(.+)", text)
-    return {
-        "projectName": name.group(1).strip() if name else "Unnamed",
-        "spec": spec.group(1).strip() if spec else text.strip()
-    }
 
 @app.route("/")
 def home():
@@ -48,8 +42,7 @@ def spec_gen():
         "prompt": prompt,
         "stream": False
     })
-    parsed = parse_spec_response(r.json().get("response", ""))
-    return jsonify(parsed)
+    return jsonify(r.json())
 
 @app.route("/api/chat", methods=["POST"])
 def chat():
@@ -68,12 +61,32 @@ def chat():
 
 @app.route("/api/build", methods=["POST"])
 def build():
-    name = request.json.get("projectName")
-    spec = request.json.get("spec")
+    data = request.get_json()
+    name = data.get("projectName", "MyPCB")
+    build_dir = os.path.join(BUILD_DIR, name)
+    os.makedirs(build_dir, exist_ok=True)
+
+    kibot_cmd = [
+        "kibot",
+        "-e", f"{build_dir}/{name}.kicad_sch",
+        "-b", f"{build_dir}/{name}.kicad_pcb",
+        "-d", f"{build_dir}/output"
+    ]
+
+    result = subprocess.run(kibot_cmd, capture_output=True)
+    if result.returncode != 0:
+        return jsonify({ "success": False, "message": result.stderr.decode() })
+
+    zip_path = os.path.join(build_dir, f"{name}.zip")
+    with zipfile.ZipFile(zip_path, "w") as zipf:
+        for root, _, files in os.walk(f"{build_dir}/output"):
+            for file in files:
+                zipf.write(os.path.join(root, file), arcname=file)
+
     return jsonify({
         "success": True,
-        "message": f"Build simulated for {name}",
-        "downloadUrl": f"https://example.com/downloads/{name}.zip"
+        "message": "Build completed.",
+        "downloadUrl": f"/{zip_path.replace(os.sep, '/')}"
     })
 
 @app.route("/api/upload", methods=["POST"])
