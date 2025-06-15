@@ -8,42 +8,38 @@
 </head>
 <body class="bg-gray-100 text-gray-900 dark:bg-gray-900 dark:text-white">
 
-  <!-- Generator UI -->
   <div class="min-h-screen flex items-center justify-center px-4">
     <div class="bg-white dark:bg-gray-800 p-8 rounded shadow-lg w-full max-w-md">
-
       <h1 class="text-2xl font-bold text-center text-blue-600 dark:text-blue-400 mb-4">PCB Generator</h1>
 
       <label class="block mb-2 font-medium">Project Name</label>
-      <input id="projectName" type="text" placeholder="e.g., SmartTag" class="w-full border p-2 rounded mb-4"/>
+      <input id="projectName" type="text" class="w-full border p-2 rounded mb-4"/>
 
       <label class="block mb-2 font-medium">Specification</label>
-      <textarea id="spec" placeholder="Describe your PCB..." class="w-full border p-2 rounded mb-4"></textarea>
+      <textarea id="spec" class="w-full border p-2 rounded mb-4"></textarea>
 
       <div class="flex gap-2 mb-4">
-        <button onclick="generatePCB()" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded">Generate</button>
-        <button onclick="generateSpec()" class="flex-1 bg-gray-700 hover:bg-gray-800 text-white font-semibold py-2 px-4 rounded">✨ AI Spec</button>
+        <button onclick="generatePCB()" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-2 rounded">Generate</button>
+        <button onclick="generateSpec()" class="flex-1 bg-gray-700 hover:bg-gray-800 text-white py-2 rounded">✨ AI Spec</button>
       </div>
 
       <button onclick="toggleDark()" class="w-full text-sm text-center text-blue-500 hover:underline mb-2">Toggle Dark Mode</button>
-
       <p id="status" class="text-center text-sm mt-2"></p>
     </div>
   </div>
 
-  <!-- 3D Viewer + Upload -->
-  <div class="max-w-4xl mx-auto mt-12 px-4">
+  <div class="max-w-4xl mx-auto mt-10 px-4">
     <h2 class="text-xl font-semibold mb-2">3D Gerber Viewer</h2>
-    <input type="file" accept=".zip" class="mb-2" />
-    <iframe src="https://gerber-viewer.seeedstudio.com/" class="w-full h-[600px] border rounded" title="3D Viewer"></iframe>
+    <input type="file" id="fileInput" accept=".zip" class="mb-2" />
+    <button onclick="uploadFile()" class="bg-green-600 text-white px-3 py-1 rounded mb-4">Upload</button>
+    <iframe src="https://gerber-viewer.seeedstudio.com/" class="w-full h-[600px] border rounded"></iframe>
   </div>
 
-  <!-- AI Chat -->
   <div id="chat" class="fixed bottom-4 right-4 w-80 bg-white dark:bg-gray-800 border rounded shadow-lg hidden flex-col">
     <div class="bg-blue-600 text-white px-4 py-2 font-bold">AI Helper</div>
     <div id="chatLog" class="p-3 h-48 overflow-y-auto text-sm"></div>
     <div class="flex">
-      <input id="chatInput" class="flex-1 border-t px-3 py-2 text-sm" placeholder="Ask something..."/>
+      <input id="chatInput" class="flex-1 border-t px-3 py-2 text-sm" placeholder="Ask anything..."/>
       <button onclick="sendMessage()" class="bg-blue-600 text-white px-4">➤</button>
     </div>
   </div>
@@ -53,18 +49,17 @@
     const backend = "http://localhost:8080";
 
     function generatePCB() {
-      const projectName = document.getElementById("projectName").value;
+      const name = document.getElementById("projectName").value;
       const spec = document.getElementById("spec").value;
-      const statusEl = document.getElementById("status");
-      statusEl.innerText = "Generating PCB…";
+      document.getElementById("status").innerText = "Generating...";
       fetch(`${backend}/api/build`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ projectName, spec })
+        body: JSON.stringify({ projectName: name, spec })
       }).then(r => r.json()).then(d => {
-        statusEl.innerHTML = d.downloadUrl
-          ? `<a href="${d.downloadUrl}" target="_blank" class="underline text-blue-600">Download Files</a>`
-          : "Error: " + (d.message || "Unknown issue");
+        document.getElementById("status").innerHTML =
+          d.downloadUrl ? `<a href="${d.downloadUrl}" class="underline text-blue-600">Download</a>` :
+          "Error: " + (d.message || "Unknown");
       });
     }
 
@@ -82,9 +77,9 @@
     }
 
     function toggleDark() {
-      const html = document.getElementById("htmlRoot");
-      html.classList.toggle("dark");
-      localStorage.setItem("theme", html.classList.contains("dark") ? "dark" : "light");
+      const root = document.getElementById("htmlRoot");
+      root.classList.toggle("dark");
+      localStorage.setItem("theme", root.classList.contains("dark") ? "dark" : "light");
     }
 
     window.onload = () => {
@@ -94,9 +89,10 @@
     };
 
     function sendMessage() {
-      const msg = document.getElementById("chatInput").value;
-      if (!msg) return;
+      const input = document.getElementById("chatInput");
       const log = document.getElementById("chatLog");
+      const msg = input.value;
+      if (!msg) return;
       log.innerHTML += `<div><strong>You:</strong> ${msg}</div>`;
       fetch(`${backend}/api/chat`, {
         method: "POST",
@@ -104,8 +100,21 @@
         body: JSON.stringify({ message: msg })
       }).then(r => r.json()).then(d => {
         log.innerHTML += `<div><strong>AI:</strong> ${d.reply}</div>`;
-        document.getElementById("chatInput").value = "";
+        input.value = "";
         log.scrollTop = log.scrollHeight;
+      });
+    }
+
+    function uploadFile() {
+      const input = document.getElementById("fileInput");
+      if (!input.files[0]) return;
+      const formData = new FormData();
+      formData.append("file", input.files[0]);
+      fetch(`${backend}/api/upload`, {
+        method: "POST",
+        body: formData
+      }).then(r => r.json()).then(d => {
+        alert(d.success ? `Uploaded: ${d.filename}` : `Failed: ${d.error}`);
       });
     }
   </script>
