@@ -30,20 +30,22 @@
 
   <div class="max-w-4xl mx-auto mt-10 px-4">
     <h2 class="text-xl font-semibold mb-2">3D Gerber Viewer</h2>
-    <input type="file" id="fileInput" accept=".zip" class="mb-2" />
-    <button onclick="uploadFile()" class="bg-green-600 text-white px-3 py-1 rounded mb-4">Upload</button>
     <iframe src="https://gerber-viewer.seeedstudio.com/" class="w-full h-[600px] border rounded"></iframe>
   </div>
 
-  <div id="chat" class="fixed bottom-4 right-4 w-80 bg-white dark:bg-gray-800 border rounded shadow-lg hidden flex-col">
-    <div class="bg-blue-600 text-white px-4 py-2 font-bold">AI Helper</div>
-    <div id="chatLog" class="p-3 h-48 overflow-y-auto text-sm"></div>
-    <div class="flex">
-      <input id="chatInput" class="flex-1 border-t px-3 py-2 text-sm" placeholder="Ask anything..."/>
-      <button onclick="sendMessage()" class="bg-blue-600 text-white px-4">➤</button>
-    </div>
+  <div class="max-w-4xl mx-auto mt-10 px-4">
+    <h2 class="text-xl font-semibold mb-2">Parts List & Pricing</h2>
+    <table id="partsTable" class="w-full border-collapse border border-gray-300">
+      <thead>
+        <tr class="bg-gray-200">
+          <th class="border p-2">Part Name</th>
+          <th class="border p-2">Model Number</th>
+          <th class="border p-2">Estimated Price</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
   </div>
-  <button onclick="document.getElementById('chat').classList.toggle('hidden')" class="fixed bottom-4 right-4 bg-blue-600 text-white px-4 py-2 rounded-full shadow-lg">💬</button>
 
   <script>
     const backend = "http://localhost:8080";
@@ -58,63 +60,18 @@
         body: JSON.stringify({ projectName: name, spec })
       }).then(r => r.json()).then(d => {
         document.getElementById("status").innerHTML =
-          d.downloadUrl ? `<a href="${d.downloadUrl}" class="underline text-blue-600">Download</a>` :
+          d.downloadUrl ? `<a href="${d.downloadUrl}" class="underline text-blue-600">Download Gerber + BOM</a>` :
           "Error: " + (d.message || "Unknown");
-      });
-    }
 
-    function generateSpec() {
-      const description = prompt("Describe your project:");
-      if (!description) return;
-      fetch(`${backend}/api/spec-gen`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ description })
-      }).then(r => r.json()).then(d => {
-        document.getElementById("projectName").value = d.projectName || "";
-        document.getElementById("spec").value = d.spec || "";
-      });
-    }
-
-    function toggleDark() {
-      const root = document.getElementById("htmlRoot");
-      root.classList.toggle("dark");
-      localStorage.setItem("theme", root.classList.contains("dark") ? "dark" : "light");
-    }
-
-    window.onload = () => {
-      if (localStorage.getItem("theme") === "dark") {
-        document.getElementById("htmlRoot").classList.add("dark");
-      }
-    };
-
-    function sendMessage() {
-      const input = document.getElementById("chatInput");
-      const log = document.getElementById("chatLog");
-      const msg = input.value;
-      if (!msg) return;
-      log.innerHTML += `<div><strong>You:</strong> ${msg}</div>`;
-      fetch(`${backend}/api/chat`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: msg })
-      }).then(r => r.json()).then(d => {
-        log.innerHTML += `<div><strong>AI:</strong> ${d.reply}</div>`;
-        input.value = "";
-        log.scrollTop = log.scrollHeight;
-      });
-    }
-
-    function uploadFile() {
-      const input = document.getElementById("fileInput");
-      if (!input.files[0]) return;
-      const formData = new FormData();
-      formData.append("file", input.files[0]);
-      fetch(`${backend}/api/upload`, {
-        method: "POST",
-        body: formData
-      }).then(r => r.json()).then(d => {
-        alert(d.success ? `Uploaded: ${d.filename}` : `Failed: ${d.error}`);
+        const partsTable = document.getElementById("partsTable").querySelector("tbody");
+        partsTable.innerHTML = "";
+        d.parts.forEach(part => {
+          partsTable.innerHTML += `<tr>
+            <td class="border p-2">${part.name}</td>
+            <td class="border p-2">${part.model}</td>
+            <td class="border p-2">${part.price}</td>
+          </tr>`;
+        });
       });
     }
   </script>
