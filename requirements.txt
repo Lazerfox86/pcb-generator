@@ -1,5 +1,4 @@
-flask
-flask-cors
-openai
-requests
-kibot
+>a browser that can run .html code
+atleast 5gb of ram
+atleaat 20mb of space (which most people have)
+When you first run the program has to be online to download all the componets after that you can use offline cabilllity's
