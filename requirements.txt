@@ -1,4 +1,4 @@
 >a browser that can run .html code
 atleast 5gb of ram
-atleaat 20mb of space (which most people have)
+atleaat 5gb of space
 When you first run the program has to be online to download all the componets after that you can use offline cabilllity's
